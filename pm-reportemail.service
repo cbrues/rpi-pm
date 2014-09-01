@@ -3,4 +3,4 @@ Description=Power monitor email script
 
 [Service]
 Type=simple
-ExecStart=/usb/bin/python /home/powermonitor/pm-reportemail.py
+ExecStart=/usr/bin/python /home/powermonitor/pm-reportemail.py
