@@ -1,0 +1,139 @@
+#!/usr/bin/python
+#
+# pm-monitor.py
+#
+# Monitors some GPIO pins and interpret them as the state of a home
+# generator power source.
+#
+# A note on comments:
+#
+# # This comment is a general comment or a comment for the following block of code
+#
+# i = i + 1		# This is a short comment about the line of code to the left
+#
+# i = i + 1
+#	# This is a long "hanging" comment about the previous line. It's
+#	# considered bad practice to exceed 80-100 columns of text so
+#	# the hanging comments lets us make long notes about a single line
+#	# without exceeding 80 columns.
+
+# Import the code that other people have written (library)
+import RPi.GPIO as GPIO
+	# The pi General Purpose Input/Output (GPIO) library under the name GPIO
+import logging			# The python logging library
+from time import sleep	# The sleep function from the time library
+import subprocess
+	# The subprocess function so we can execute other programs from within
+	# this script
+from systemd.daemon import notify
+	# The notify function from the systemd library. This allows us to use
+	# the systemd watchdog functionality.
+import sys # System level things. We mostly want the console otuput
+
+# Here are the normally configurable options. The names are as descriptive
+# as possible.
+LOG_PROCESSNAME = 'power'
+LOG_OUTPUTFILE	= '/home/powermonitor/power.log'
+LOG_FORMAT		= '%(asctime)s %(levelname)s %(message)s'
+
+GPIO_STATUS_LED_PIN			= 22
+GPIO_FAULT_LED_PIN			= 23
+GPIO_BACKUP_CONTROL_PIN		= 24
+GPIO_POWER_STATUS_INPUT_PIN = 17
+GPIO_AUX_INPUT_PIN			= 18
+
+PM_POLL_INTERVAL_S	= 1		# How often to check the input pins.
+PM_BATTERY_LIMIT	= 50
+	# The battery limit is how many poll intervals the monitor will run on
+	# battery power before shuting down. This should be long enough for backup
+	# power to come on, but short enough so the battery isn't stressed too much.
+PM_DEBUG_MODE		 = True
+	# Set this to true and the monitor won't shutdown the pi after
+	# runnning on battery power.
+
+# Initialize the log file using the logging library
+logger = logging.getLogger( LOG_PROCESSNAME )	# Start logging.
+hdlr = logging.FileHandler( LOG_OUTPUTFILE )
+	# Set the logger to log to the file as well as the normal system log.
+formatter = logging.Formatter( LOG_FORMAT )
+	# Set the format of the log file to be YYYY-MM-DD HH:MM:SS,SSS INFO Message
+hdlr.setFormatter( formatter )
+	# Attaches the previous formatter to the logging handler.
+hdlr.setLevel( logging.INFO )	 # Only log info and higher tot he log file.
+logger.addHandler( hdlr )		 # Add the logging file handler.
+logger.setLevel( logging.DEBUG ) # Sett he default logging level to INFO.
+
+# Configure the debug logging to the console
+if( PM_DEBUG_MODE == True ):
+	ch = logging.StreamHandler( sys.stdout )
+	ch.setFormatter( formatter )
+	logger.addHandler( ch )
+
+# Initialize the GPIO
+GPIO.setwarnings( False )
+	# Don't print verbose information messages if a pin isn't in the default
+	# state.
+GPIO.setmode( GPIO.BCM )
+	# We want to refer to the GPIO pins by their Broadcom assigned name.
+
+# Configure each pin
+GPIO.setup( GPIO_STATUS_LED_PIN , GPIO.OUT , initial=GPIO.LOW )
+GPIO.setup( GPIO_FAULT_LED_PIN , GPIO.OUT , initial=GPIO.LOW )
+GPIO.setup( GPIO_BACKUP_CONTROL_PIN , GPIO.OUT , initial=GPIO.HIGH )
+GPIO.setup( GPIO_POWER_STATUS_INPUT_PIN , GPIO.IN , pull_up_down=GPIO.PUD_UP )
+GPIO.setup( GPIO_AUX_INPUT_PIN , GPIO.IN , pull_up_down=GPIO.PUD_UP )
+
+# Initialize the inital values for the running state of the monitor.
+powerstatus = GPIO.input( GPIO_POWER_STATUS_INPUT_PIN )
+	# State of the local power supply
+auxstatus = GPIO.input( GPIO_AUX_INPUT_PIN ) # State of the aux input
+batterycount = 0 # How long we have been running on battery power.
+
+# Log that we're starting up
+logger.info( 'Power monitor started.' )
+logger.debug( 'PM in debug mode, system will not reboot.' )
+
+# Run the main power monitor loop. This whould run forever.
+while True:
+	if( PM_DEBUG_MODE == False ):
+		notify( 'WATCHDOG=1' )
+			# Feed the watchdog (systemd) that we are still running.
+	sleep( PM_POLL_INTERVAL_S )
+
+	# Read in the new input states.
+	newpowerstatus = GPIO.input( GPIO_POWER_STATUS_INPUT_PIN )
+	newauxstatus = GPIO.input( GPIO_AUX_INPUT_PIN )
+
+	# Detect a change in the local power status
+	if( newpowerstatus != powerstatus ):
+		powerstatus = newpowerstatus
+		if( powerstatus == True ):
+			logger.info( 'Switched to battery power.' )
+			GPIO.output( GPIO_STATUS_LED_PIN , True )
+		else:
+			logger.info( 'Switched to normal power.' )
+			GPIO.output( GPIO_STATUS_LED_PIN , False )
+
+	# Detect a change in the aux input
+	if( newauxstatus != auxstatus ):
+		auxstatus = newauxstatus
+		if( auxstatus == True ):
+			logger.info( 'Gen online' )
+			GPIO.output( GPIO_FAULT_LED_PIN , True )
+		else:
+			logger.info( 'Gen offline' )
+			GPIO.output( GPIO_FAULT_LED_PIN , False )
+
+	# Keep track of how long we've been running on battery power
+	if( powerstatus == True ):
+		batterycount += 1
+	else:
+		batterycount = 0
+
+	# Turn the pi off if we've been running on battery power for too long.
+	if( batterycount > PM_BATTERY_LIMIT ):
+		logger.info( 'Powering off due to power loss.' )
+		if( PM_DEBUG_MODE == False ):
+			subprocess.call( 'reboot' , shell=True )
+		exit( 0 )
+

@@ -1,0 +1,13 @@
+[Unit]
+Description=Power monitor startup script
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/powermonitor/pm-monitor.py
+WatchdogSec=3
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
