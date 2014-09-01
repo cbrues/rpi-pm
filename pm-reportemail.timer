@@ -1,0 +1,22 @@
+[Unit]
+Description=Runs the pm report
+
+[Timer]
+# Send an email 5 minutes after pi boots up.
+OnBootSec=5min
+# When to send out a periodic email
+#
+# 07:00 -> 7AM every day
+# Mon 07:00 -> 7AM monday
+# Mon,Wed,Fri 07:00 -> MWF at 7AM
+# daily -> midnight every day
+# weekly -> monday at midnight
+#
+# See the systemd.time man page for more details
+# http://www.freedesktop.org/software/systemd/man/systemd.time.html#Calendar%20Events
+#
+OnCalendar=07:00
+Unit=pm-reportemail.service
+
+[Install]
+WantedBy=multi-user.target
