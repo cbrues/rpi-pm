@@ -1,0 +1,18 @@
+post_install() {
+	systemctl daemon-reload
+	systemctl start pm-reportemail.timer
+	systemctl enable pm-reportemail.timer
+	systemctl start pm-monitor.service
+	systemctl enable pm-monitor.service
+}
+post_upgrade() {
+	systemctl daemon-reload
+	systemctl restart pm-reportemail.timer
+	systemctl restart pm-monitor.service
+}
+pre_remove() {
+	systemctl stop pm-reportemail.timer
+	systemctl disable pm-reportemail.timer
+	systemctl stop pm-monitor.service
+	systemctl disable pm-monitor.service
+}

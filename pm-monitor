@@ -33,7 +33,7 @@ import sys # System level things. We mostly want the console otuput
 # Here are the normally configurable options. The names are as descriptive
 # as possible.
 LOG_PROCESSNAME = 'power'
-LOG_OUTPUTFILE	= '/home/powermonitor/power.log'
+LOG_OUTPUTFILE	= '/var/log/power.log'
 LOG_FORMAT		= '%(asctime)s %(levelname)s %(message)s'
 
 GPIO_STATUS_LED_PIN			= 22
@@ -47,7 +47,7 @@ PM_BATTERY_LIMIT	= 50
 	# The battery limit is how many poll intervals the monitor will run on
 	# battery power before shuting down. This should be long enough for backup
 	# power to come on, but short enough so the battery isn't stressed too much.
-PM_DEBUG_MODE		 = True
+PM_DEBUG_MODE		 = False
 	# Set this to true and the monitor won't shutdown the pi after
 	# runnning on battery power.
 

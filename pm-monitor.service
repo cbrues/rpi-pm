@@ -4,7 +4,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python /home/powermonitor/pm-monitor.py
+ExecStart=/usr/bin/pm-monitor
 WatchdogSec=3
 Restart=always
 

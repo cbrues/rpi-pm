@@ -11,8 +11,8 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 
 PM_SUBJECT = 'Power monitor daily status report'
-PM_TOSEND = '/home/powermonitor/power.log'
-PM_AUTHFILE = '/home/powermonitor/emailauth'
+PM_TOSEND = '/var/log/power.log'
+PM_AUTHFILE = '/etc/emailauth'
 
 with open( PM_AUTHFILE ) as authfile:
 	PM_SENDER = authfile.readline().strip()
